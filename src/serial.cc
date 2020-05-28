@@ -125,6 +125,9 @@ void serialise(const Rule &rule, std::ostream &out)
     serialise(rule.port, out);
     serialise(rule.port_end, out);
     serialise(rule.socket_path, out);
+#if defined(__linux__)
+    serialise(rule.abstract, out);
+#endif
 #ifdef SYSTEMD_SUPPORT
     serialise(rule.socket_activation, out);
     serialise(rule.fd_name, out);
@@ -147,6 +150,9 @@ MaybeError deserialise(std::istream &in, Rule *out)
     DESERIALISE_OR_ERR(port);
     DESERIALISE_OR_ERR(port_end);
     DESERIALISE_OR_ERR(socket_path);
+#if defined(__linux__)
+    DESERIALISE_OR_ERR(abstract);
+#endif
 #ifdef SYSTEMD_SUPPORT
     DESERIALISE_OR_ERR(socket_activation);
     DESERIALISE_OR_ERR(fd_name);

@@ -130,6 +130,9 @@ static unsigned long test_rule(unsigned long seed)
     rule.fd_name = CHOOSE(strings);
 #endif
     rule.socket_path = CHOOSE(strings);
+#if defined(__linux__)
+    rule.abstract = rule.socket_path;
+#endif
     rule.reject = CHOOSE(bools);
     rule.reject_errno = CHOOSE(ints);
     rule.blackhole = CHOOSE(bools);
@@ -151,6 +154,7 @@ static unsigned long test_rule(unsigned long seed)
     ASSERT_RULEVAL(fd_name);
 #endif
     ASSERT_RULEVAL(socket_path);
+    ASSERT_RULEVAL(abstract);
     ASSERT_RULEVAL(reject);
     ASSERT_RULEVAL(reject_errno);
     ASSERT_RULEVAL(blackhole);
