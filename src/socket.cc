@@ -150,7 +150,8 @@ int Socket::listen(int backlog)
  * Replace placeholders such as %p or %a accordingly in the socket path.
  */
 std::string Socket::format_sockpath(const std::string &path,
-                                    const SockAddr &addr) const
+                                    const SockAddr &addr,
+                                    bool is_abstract) const
 {
     std::string out = "";
     size_t path_len = path.size();
@@ -298,7 +299,8 @@ int Socket::activate(const SockAddr &addr, int filedes, bool is_inet)
 #define USOCK_OR_EFAULT(path) \
     __USOCK_OR_FAIL(path, { errno = EFAULT; return -1; })
 
-int Socket::bind(const SockAddr &addr, const std::string &path)
+int Socket::bind(const SockAddr &addr, const std::string &path,
+                 bool is_abstract)
 {
     if (!this->make_unix())
         return -1;
@@ -315,7 +317,7 @@ int Socket::bind(const SockAddr &addr, const std::string &path)
         port = anyport;
     }
 
-    std::string newpath = this->format_sockpath(path, newaddr);
+    std::string newpath = this->format_sockpath(path, newaddr, is_abstract);
 
     int ret;
 
@@ -335,7 +337,8 @@ int Socket::bind(const SockAddr &addr, const std::string &path)
         ret = real::bind(this->fd, dest.cast(), dest.size());
         if (ret == 0) {
             Socket::sockpath_registry.insert(newpath);
-            this->unlink_sockpath = newpath;
+            if (!is_abstract)
+                this->unlink_sockpath = newpath;
         }
     }
 
@@ -362,14 +365,16 @@ std::optional<int> Socket::connect_peermap(const SockAddr &addr)
     return std::nullopt;
 }
 
-int Socket::connect(const SockAddr &addr, const std::string &path)
+int Socket::connect(const SockAddr &addr, const std::string &path,
+                    bool is_abstract)
 {
     if (this->type == SocketType::UDP && !this->binding) {
         /* If we connect without prior binding on a datagram socket, we need to
          * create an implicit binding first, so the peer is able to recognise
          * us.
          */
-        std::optional<SockAddr> maybe_dest = this->rewrite_dest(addr, path);
+        std::optional<SockAddr> maybe_dest = this->rewrite_dest(addr, path,
+                                                                is_abstract);
         if (!maybe_dest) {
             errno = EADDRNOTAVAIL;
             return -1;
@@ -381,7 +386,7 @@ int Socket::connect(const SockAddr &addr, const std::string &path)
         return ret;
     }
 
-    std::string new_sockpath = this->format_sockpath(path, addr);
+    std::string new_sockpath = this->format_sockpath(path, addr, is_abstract);
     USOCK_OR_EFAULT(new_sockpath);
 
     if (!this->make_unix())
@@ -540,13 +545,14 @@ Socket::rewrite_dest_peermap(const SockAddr &addr) const
 
 /* Rewrite address provided by sendto/sendmsg. */
 std::optional<SockAddr> Socket::rewrite_dest(const SockAddr &addr,
-                                             const std::string &path)
+                                             const std::string &path,
+                                             bool is_abstract)
 {
     if (this->type != SocketType::UDP)
         return std::nullopt;
 
     std::optional<SockAddr> destpath =
-        SockAddr::unix(this->format_sockpath(path, addr));
+        SockAddr::unix(this->format_sockpath(path, addr, is_abstract));
 
     if (!destpath)
         return std::nullopt;

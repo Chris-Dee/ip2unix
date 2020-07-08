@@ -218,7 +218,7 @@ static inline int bind_connect(SockFun &&sockfun, RealFun &&realfun,
 
         if (rule->second.blackhole) {
             sock->blackhole();
-            return std::invoke(sockfun, sock, inaddr, "");
+            return std::invoke(sockfun, sock, inaddr, "", false);
         }
 
 #ifdef SYSTEMD_SUPPORT
@@ -232,12 +232,17 @@ static inline int bind_connect(SockFun &&sockfun, RealFun &&realfun,
                 LOG(WARNING) << "Systemd file descriptor queue empty, "
                              << "blackholing socket with fd " << fd << '.';
                 sock->blackhole();
-                return std::invoke(sockfun, sock, inaddr, "");
+                return std::invoke(sockfun, sock, inaddr, "", false);
             }
         }
 #endif
 
-        return std::invoke(sockfun, sock, inaddr, *rule->second.socket_path);
+        if (rule->second.abstract)
+            return std::invoke(sockfun, sock, inaddr,
+                               *rule->second.abstract, true);
+        else
+            return std::invoke(sockfun, sock, inaddr,
+                               *rule->second.socket_path, false);
     }, [&]() {
         return std::invoke(realfun, fd, addr, addrlen);
     });
@@ -417,7 +422,12 @@ extern "C" ssize_t WRAP_SYM(sendto)(int fd, const void *buf, size_t len,
                 return static_cast<ssize_t>(-1);
             }
 
-            newdest = sock->rewrite_dest(addrcopy, *rule->second.socket_path);
+            if (rule->second.abstract)
+                newdest = sock->rewrite_dest(addrcopy, *rule->second.abstract,
+                                             true);
+            else
+                newdest = sock->rewrite_dest(addrcopy,
+                                             *rule->second.socket_path, false);
         }
 
         if (newdest) {
@@ -462,7 +472,12 @@ extern "C" ssize_t WRAP_SYM(sendmsg)(int fd, const struct msghdr *msg,
                 return static_cast<ssize_t>(-1);
             }
 
-            newdest = sock->rewrite_dest(addrcopy, *rule->second.socket_path);
+            if (rule->second.abstract)
+                newdest = sock->rewrite_dest(addrcopy,
+                                             *rule->second.abstract, true);
+            else
+                newdest = sock->rewrite_dest(addrcopy,
+                                             *rule->second.socket_path, false);
         }
 
         msghdr newmsg;

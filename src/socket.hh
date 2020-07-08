@@ -57,9 +57,9 @@ struct Socket : std::enable_shared_from_this<Socket>
 #ifdef SYSTEMD_SUPPORT
     int activate(const SockAddr&, int, bool);
 #endif
-    int bind(const SockAddr&, const std::string&);
+    int bind(const SockAddr&, const std::string&, bool);
     std::optional<int> connect_peermap(const SockAddr&);
-    int connect(const SockAddr&, const std::string&);
+    int connect(const SockAddr&, const std::string&, bool);
 
     int accept(int, sockaddr*, socklen_t*);
     int getsockname(sockaddr*, socklen_t*);
@@ -67,7 +67,8 @@ struct Socket : std::enable_shared_from_this<Socket>
 
     bool rewrite_src(const SockAddr&, sockaddr*, socklen_t*);
     std::optional<SockAddr> rewrite_dest_peermap(const SockAddr&) const;
-    std::optional<SockAddr> rewrite_dest(const SockAddr&, const std::string&);
+    std::optional<SockAddr> rewrite_dest(const SockAddr&, const std::string&,
+                                         bool);
 
     int dup(void);
     int dup(int, int);
@@ -128,7 +129,8 @@ struct Socket : std::enable_shared_from_this<Socket>
         bool make_unix(int = -1);
         bool create_binding(const SockAddr&);
 
-        std::string format_sockpath(const std::string&, const SockAddr&) const;
+        std::string format_sockpath(const std::string&, const SockAddr&,
+                                    bool) const;
 };
 
 #endif
